@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nghe và Xếp từ thành câu: new version</title>
+    <style>
+        /* Định nghĩa các biến CSS cho màu sắc và kích thước */
+        :root {
+            --primary-color: #1e90ff; /* Màu xanh dương */
+            --primary-dark: #1873cc; /* Màu xanh dương đậm hơn */
+            --success-color: #28a745; /* Màu xanh lá cây (thành công) */
+            --error-color: #ff4444; /* Màu đỏ (lỗi) */
+            --light-bg: #f0f8ff; /* Nền màu xanh nhạt */
+            --text-color: #333; /* Màu chữ chính */
+            --disabled-color: #ccc; /* Màu cho các phần tử bị vô hiệu hóa */
+        }
+
+        /* Thiết lập chung cho body */
+        body {
+            font-family: 'Arial', sans-serif; /* Font chữ */
+            background: linear-gradient(to right, #4facfe, #00f2fe); /* Nền gradient */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Chiều cao tối thiểu 100% viewport */
+            margin: 0;
+            color: var(--text-color);
+            overscroll-behavior: none; /* Ngăn cuộn quá mức trên di động */
+            -webkit-tap-highlight-color: transparent; /* Loại bỏ hiệu ứng highlight khi chạm trên iOS */
+        }
+
+        /* Container chính của trò chơi */
+        .container {
+            text-align: center;
+            padding: 20px;
+            max-width: 900px;
+            width: 95%; /* Chiều rộng linh hoạt */
+            background: rgba(255, 255, 255, 0.98); /* Nền trắng hơi trong suốt */
+            border-radius: 20px; /* Bo tròn góc */
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1); /* Đổ bóng */
+            box-sizing: border-box; /* Bao gồm padding và border trong chiều rộng/cao */
+        }
+
+        /* Tiêu đề trò chơi */
+        .game-title {
+            font-size: clamp(2em, 6vw, 2.8em); /* Kích thước font linh hoạt */
+            color: var(--primary-color);
+            margin: 0 0 20px;
+            font-weight: bold;
+        }
+
+        /* Phần hiển thị nghĩa tiếng Việt */
+        .meaning {
+            font-size: clamp(1.1em, 4.5vw, 1.6em);
+            color: var(--primary-dark);
+            margin: 10px 0;
+            font-style: italic;
+        }
+
+        /* Phần hiển thị câu đang được xây dựng */
+        .sentence {
+            font-size: clamp(1.2em, 4vw, 1.6em);
+            margin: 20px 0;
+            min-height: 50px; /* Chiều cao tối thiểu */
+            background: var(--light-bg);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05); /* Đổ bóng bên trong */
+            letter-spacing: 2px; /* Khoảng cách chữ */
+            font-weight: 500;
+        }
+
+        /* Khu vực chứa các từ để chọn */
+        .word-bank {
+            display: flex;
+            flex-wrap: wrap; /* Cho phép các từ xuống dòng */
+            justify-content: center;
+            gap: 15px; /* Khoảng cách giữa các từ */
+            margin: 25px 0;
+        }
+
+        /* Mỗi từ trong ngân hàng từ */
+        .word {
+            background: #fff;
+            border: 2px solid var(--primary-color);
+            border-radius: 8px;
+            padding: 12px 22px;
+            cursor: pointer; /* Con trỏ hình bàn tay */
+            font-size: clamp(1em, 3.5vw, 1.3em);
+            transition: all 0.2s ease-in-out; /* Hiệu ứng chuyển động mượt mà */
+            user-select: none; /* Ngăn chọn văn bản */
+            touch-action: manipulation; /* Cải thiện phản hồi chạm */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Hiệu ứng hover/focus cho từ */
+        .word:hover, .word:focus {
+            background: var(--primary-color);
+            color: #fff;
+            transform: translateY(-3px); /* Di chuyển lên trên */
+            box-shadow: 0 4px 8px rgba(30, 144, 255, 0.3);
+            outline: none; /* Bỏ viền focus mặc định */
+        }
+
+        /* Trạng thái từ bị vô hiệu hóa */
+        .word.disabled {
+            background: #e0e0e0;
+            border-color: var(--disabled-color);
+            cursor: not-allowed;
+            pointer-events: none; /* Ngăn chặn sự kiện click */
+            opacity: 0.7;
+        }
+        
+        /* Trạng thái từ đúng */
+        .word.correct {
+            background: var(--success-color);
+            border-color: var(--success-color);
+            color: #fff;
+            transform: scale(1.05); /* Phóng to nhẹ */
+        }
+
+        /* Trạng thái từ sai */
+        .word.incorrect {
+            background: var(--error-color);
+            border-color: var(--error-color);
+            color: #fff;
+            animation: shake 0.5s; /* Hiệu ứng rung */
+        }
+
+        /* Keyframes cho hiệu ứng rung */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        /* Khu vực chứa các nút điều khiển */
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        /* Các nút chung */
+        button {
+            background: var(--primary-color);
+            color: #fff;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: clamp(0.9em, 3.5vw, 1.1em);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            touch-action: manipulation;
+        }
+
+        /* Hiệu ứng hover/focus cho nút */
+        button:hover, button:focus {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            outline: none;
+        }
+
+        /* Trạng thái nút bị vô hiệu hóa */
+        button:disabled {
+            background: var(--disabled-color);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Hiển thị điểm số */
+        .score {
+            font-size: clamp(1em, 4vw, 1.3em);
+            margin-top: 15px;
+            font-weight: 500;
+        }
+
+        /* Hiển thị thông báo (ví dụ: "Sai rồi!") */
+        .message {
+            font-size: clamp(1.1em, 4vw, 1.4em);
+            color: var(--error-color);
+            margin: 15px 0;
+            font-weight: 500;
+            min-height: 25px; /* Đảm bảo không bị nhảy layout */
+        }
+        
+        /* Hiệu ứng nhấp nháy */
+        .blink {
+            animation: blink 0.4s 3;
+        }
+
+        /* Keyframes cho hiệu ứng nhấp nháy */
+        @keyframes blink {
+            50% { background: #fff; color: var(--text-color); }
+        }
+
+        /* Canvas cho hiệu ứng pháo hoa */
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Cho phép click xuyên qua canvas */
+            z-index: 1000;
+        }
+        
+        /* Màn hình bắt đầu và màn hình chúc mừng */
+        .start-screen, .congrats-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        /* Nút bắt đầu và chơi lại */
+        #startBtn, #playAgainBtn {
+            padding: 15px 40px;
+            font-size: 1.2em;
+            background: var(--success-color);
+        }
+        #startBtn:hover, #playAgainBtn:hover {
+            background: darkgreen;
+        }
+        
+        #nameInput {
+            padding: 10px;
+            font-size: 1em;
+            border-radius: 8px;
+            border: 2px solid var(--primary-color);
+            width: 80%;
+            max-width: 300px;
+            text-align: center;
+        }
+
+        /* Điều chỉnh cho màn hình nhỏ hơn */
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            .word-bank { gap: 10px; }
+            .word { padding: 10px 18px; }
+            button { padding: 10px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Canvas cho hiệu ứng pháo hoa -->
+    <canvas id="fireworks"></canvas>
+
+    <div class="container">
+        <!-- Tiêu đề game -->
+        <div class="game-title">NGHE VÀ XẾP TỪ THÀNH CÂU</div>
+        <div class="game-title" style="font-size: clamp(1.5em, 5vw, 2em); margin-top: 0; color: #555;">(Từ vựng cơ bản)</div>
+
+        <!-- Màn hình bắt đầu -->
+        <div class="start-screen" id="startScreen">
+            <input type="text" id="nameInput" placeholder="Nhập tên của bạn">
+            <button id="startBtn">Bắt đầu</button>
+        </div>
+
+        <!-- Màn hình chơi game -->
+        <div class="game-screen" id="gameScreen" style="display: none;">
+            <div class="meaning" id="meaning"></div>
+            <div class="sentence" id="sentence"></div>
+            <div class="message" id="message"></div>
+            <div class="word-bank" id="wordBank"></div>
+            <div class="buttons">
+                <button id="listenAgainBtn">Nghe lại từ cần điền</button>
+                <button id="resetBtn">Chơi lại từ đầu</button>
+            </div>
+            <div class="score" id="score">Điểm: 0 | Hoàn thành: 0/57</div>
+        </div>
+
+        <!-- Màn hình chúc mừng -->
+        <div class="congrats-screen" id="congratsScreen" style="display: none;">
+            <div class="message" style="color: var(--success-color); font-size: 1.5em;">Chúc mừng! Bạn đã hoàn thành tất cả các câu!</div>
+            <button id="playAgainBtn">Chơi lại</button>
+        </div>
+    </div>
+
+    <script>
+    // Danh sách các câu tiếng Anh và bản dịch tiếng Việt
+    const sentences = [
+        { en: "This is an alligator.", vi: "Đây là một con cá sấu." },
+        { en: "This is an ant.", vi: "Đây là một con kiến." },
+        { en: "This is an apple.", vi: "Đây là một quả táo." },
+        { en: "This is a ball.", vi: "Đây là một quả bóng." },
+        { en: "This is a banana.", vi: "Đây là một quả chuối." },
+        { en: "This is a bear.", vi: "Đây là một con gấu." },
+        { en: "This is a car.", vi: "Đây là một chiếc ô tô." },
+        { en: "This is a cat.", vi: "Đây là một con mèo." },
+        { en: "This is a cow.", vi: "Đây là một con bò." },
+        { en: "This is a dog.", vi: "Đây là một con chó." },
+        { en: "This is a drum.", vi: "Đây là một cái trống." },
+        { en: "This is a duck.", vi: "Đây là một con vịt." },
+        { en: "This is an ear.", vi: "Đây là một cái tai." },
+        { en: "This is an egg.", vi: "Đây là một quả trứng." },
+        { en: "This is an elephant.", vi: "Đây là một con voi." },
+        { en: "This is a fish.", vi: "Đây là một con cá." },
+        { en: "This is a frog.", vi: "Đây là một con ếch." },
+        { en: "This is a gift.", vi: "Đây là một món quà." },
+        { en: "This is a goat.", vi: "Đây là một con dê." },
+        { en: "This is a bunch of grapes.", vi: "Đây là một chùm nho." },
+        { en: "This is a hat.", vi: "Đây là một cái mũ." },
+        { en: "This is a horse.", vi: "Đây là một con ngựa." },
+        { en: "This is a house.", vi: "Đây là một ngôi nhà." },
+        { en: "This is an ice cream.", vi: "Đây là một cây kem." },
+        { en: "This is an insect.", vi: "Đây là một con côn trùng." },
+        { en: "This is a kangaroo.", vi: "Đây là một con chuột túi." },
+        { en: "This is a key.", vi: "Đây là một cái chìa khóa." },
+        { en: "This is a kite.", vi: "Đây là một con diều." },
+        { en: "This is a leaf.", vi: "Đây là một cái lá." },
+        { en: "This is a lion.", vi: "Đây là một con sư tử." },
+        { en: "This is some milk.", vi: "Đây là một ít sữa." },
+        { en: "This is the moon.", vi: "Đây là mặt trăng." },
+        { en: "This is a monkey.", vi: "Đây là một con khỉ." },
+        { en: "This is a net.", vi: "Đây là một cái lưới." },
+        { en: "This is a nose.", vi: "Đây là một cái mũi." },
+        { en: "This is an octopus.", vi: "Đây là một con bạch tuộc." },
+        { en: "This is an orange.", vi: "Đây là một quả cam." },
+        { en: "This is an owl.", vi: "Đây là một con cú." },
+        { en: "This is a pen.", vi: "Đây là một cái bút." },
+        { en: "This is a pig.", vi: "Đây là một con lợn." },
+        { en: "This is a pizza.", vi: "Đây là một cái bánh pizza." },
+        { en: "This is a rabbit.", vi: "Đây là một con thỏ." },
+        { en: "This is a robot.", vi: "Đây là một con robot." },
+        { en: "This is a sock.", vi: "Đây là một cái tất." },
+        { en: "This is a star.", vi: "Đây là một ngôi sao." },
+        { en: "This is the sun.", vi: "Đây là mặt trời." },
+        { en: "This is a tiger.", vi: "Đây là một con hổ." },
+        { en: "This is a turtle.", vi: "Đây là một con rùa." },
+        { en: "This is an umbrella.", vi: "Đây là một cái ô." },
+        { en: "This is a unicorn.", vi: "Đây là một con kỳ lân." },
+        { en: "This is a uniform.", vi: "Đây là một bộ đồng phục." },
+        { en: "This is a van.", vi: "Đây là một chiếc xe van." },
+        { en: "This is a violin.", vi: "Đây là một cây vĩ cầm." },
+        { en: "This is a watch.", vi: "Đây là một cái đồng hồ." },
+        { en: "This is a whale.", vi: "Đây là một con cá voi." },
+        { en: "This is a yo-yo.", vi: "Đây là một con yo-yo." },
+        { en: "This is a zebra.", vi: "Đây là một con ngựa vằn." }
+    ];
+
+    // Lấy các phần tử HTML cần thiết
+    const elements = {
+        startScreen: document.getElementById('startScreen'),
+        gameScreen: document.getElementById('gameScreen'),
+        congratsScreen: document.getElementById('congratsScreen'),
+        meaning: document.getElementById('meaning'),
+        sentence: document.getElementById('sentence'),
+        message: document.getElementById('message'),
+        wordBank: document.getElementById('wordBank'),
+        listenAgainBtn: document.getElementById('listenAgainBtn'),
+        resetBtn: document.getElementById('resetBtn'),
+        startBtn: document.getElementById('startBtn'),
+        playAgainBtn: document.getElementById('playAgainBtn'),
+        score: document.getElementById('score'),
+        canvas: document.getElementById('fireworks'),
+        nameInput: document.getElementById('nameInput')
+    };
+
+    // Đối tượng lưu trữ trạng thái trò chơi
+    let state = {};
+
+    // Kiểm tra hỗ trợ SpeechSynthesis API
+    const isSpeechSupported = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+
+    // Hàng đợi phát âm để xử lý các yêu cầu tuần tự
+    let speechQueue = [];
+    let isSpeaking = false;
+
+    /**
+     * Khởi tạo trạng thái ban đầu của trò chơi.
+     */
+    function initializeState() {
+        state = {
+            originalSentence: '', // Câu tiếng Anh gốc
+            words: [], // Các từ của câu gốc
+            currentWordIndex: 0, // Chỉ số của từ hiện tại cần điền
+            score: 0, // Điểm số
+            completedSentences: 0, // Số câu đã hoàn thành
+            currentSentenceIndex: 0, // Chỉ số của câu hiện tại trong danh sách (để chơi tuần tự)
+            animationFrameId: null // ID của animation frame cho pháo hoa
+        };
+        // Reset hàng đợi và cờ trạng thái
+        speechQueue = [];
+        isSpeaking = false;
+    }
+
+    /**
+     * Khởi tạo SpeechSynthesis, đảm bảo giọng nói được tải.
+     */
+    function initializeSpeech() {
+        if (isSpeechSupported && speechSynthesis.getVoices().length === 0) {
+            speechSynthesis.onvoiceschanged = () => console.log("Voices loaded.");
+        }
+    }
+
+    /**
+     * Thêm một yêu cầu phát âm vào hàng đợi.
+     * @param {string} text - Văn bản cần phát âm.
+     * @param {function} [callback] - Hàm callback được gọi khi phát âm xong.
+     */
+    function speak(text, callback) {
+        if (!isSpeechSupported) {
+            if (callback) callback();
+            return;
+        }
+
+        speechQueue.push({ text, callback });
+        processSpeechQueue();
+    }
+
+    /**
+     * Xử lý hàng đợi phát âm, bắt đầu phát âm yêu cầu tiếp theo nếu không có yêu cầu nào đang được xử lý.
+     */
+    function processSpeechQueue() {
+        if (isSpeaking || speechQueue.length === 0) {
+            return;
+        }
+
+        const nextUtterance = speechQueue.shift();
+        const utterance = new SpeechSynthesisUtterance(nextUtterance.text);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.9;
+        
+        isSpeaking = true;
+        elements.listenAgainBtn.disabled = true;
+
+        utterance.onend = () => {
+            isSpeaking = false;
+            elements.listenAgainBtn.disabled = false;
+            if (nextUtterance.callback) nextUtterance.callback();
+            processSpeechQueue(); // Xử lý yêu cầu tiếp theo trong hàng đợi
+        };
+        utterance.onerror = (event) => {
+            console.error('SpeechSynthesis Error:', event.error);
+            isSpeaking = false;
+            elements.listenAgainBtn.disabled = false;
+            if (nextUtterance.callback) nextUtterance.callback();
+            processSpeechQueue(); // Xử lý yêu cầu tiếp theo trong hàng đợi
+        };
+
+        // Luôn hủy bỏ giọng nói hiện tại trước khi bắt đầu một giọng nói mới
+        speechSynthesis.cancel();
+        setTimeout(() => speechSynthesis.speak(utterance), 100);
+    }
+
+    /**
+     * Xáo trộn thứ tự các phần tử trong một mảng (thuật toán Fisher-Yates).
+     * @param {Array} array - Mảng cần xáo trộn.
+     * @returns {Array} Mảng đã được xáo trộn.
+     */
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    /**
+     * Cập nhật hiển thị điểm số và số câu đã hoàn thành.
+     */
+    function updateScoreDisplay() {
+        elements.score.textContent = `Điểm: ${state.score} | Hoàn thành: ${state.completedSentences}/${sentences.length}`;
+    }
+
+    /**
+     * Bắt đầu một câu mới.
+     */
+    function startNewSentence() {
+        // Kiểm tra nếu tất cả các câu đã hoàn thành
+        if (state.completedSentences >= sentences.length) {
+            showCongratulations(); // Hiển thị màn hình chúc mừng
+            return;
+        }
+
+        // Lấy câu hiện tại theo thứ tự tuần tự từ danh sách
+        const currentData = sentences[state.currentSentenceIndex]; 
+
+        state.originalSentence = currentData.en;
+        // Loại bỏ dấu câu cuối cùng để chia từ chính xác
+        const cleanSentence = state.originalSentence.replace(/[.!?]$/, '');
+        state.words = cleanSentence.split(' '); // Tách câu thành các từ
+        state.currentWordIndex = 0; // Đặt lại chỉ số từ hiện tại
+
+        elements.meaning.innerHTML = currentData.vi; // Hiển thị nghĩa tiếng Việt
+        elements.message.textContent = ''; // Xóa thông báo
+        // Hiển thị câu với các dấu gạch dưới cho mỗi từ
+        elements.sentence.textContent = '_ '.repeat(state.words.length).trim();
+
+        // Xáo trộn các từ và hiển thị trong ngân hàng từ
+        const shuffledWords = shuffle([...state.words]); // Chỉ xáo trộn các từ trong câu hiện tại
+        elements.wordBank.innerHTML = ''; // Xóa các từ cũ
+        shuffledWords.forEach(word => {
+            const wordEl = document.createElement('div');
+            wordEl.className = 'word';
+            wordEl.textContent = word;
+            wordEl.addEventListener('click', () => handleWordClick(word, wordEl)); // Gán sự kiện click
+            elements.wordBank.appendChild(wordEl);
+        });
+
+        elements.listenAgainBtn.disabled = false; // Kích hoạt nút nghe lại
+        speak(state.words[0]); // Phát âm từ đầu tiên của câu
+    }
+
+    /**
+     * Xử lý sự kiện khi người dùng click vào một từ.
+     * @param {string} clickedWord - Từ mà người dùng đã click.
+     * @param {HTMLElement} wordEl - Phần tử HTML của từ đã click.
+     */
+    function handleWordClick(clickedWord, wordEl) {
+        if (wordEl.classList.contains('disabled')) return; // Bỏ qua nếu từ đã bị vô hiệu hóa
+
+        const correctWord = state.words[state.currentWordIndex]; // Từ đúng cần điền
+
+        if (clickedWord === correctWord) {
+            // Logic khi người dùng chọn đúng từ
+            wordEl.classList.add('correct', 'disabled'); // Thêm class 'correct' và 'disabled'
+            launchEffectFromElement(wordEl); // Tạo hiệu ứng pháo hoa tại vị trí từ đúng
+            
+            // Cập nhật câu hiển thị
+            const sentenceWords = elements.sentence.textContent.split(' ');
+            sentenceWords[state.currentWordIndex] = clickedWord;
+            elements.sentence.textContent = sentenceWords.join(' ');
+            
+            state.currentWordIndex++; // Tăng chỉ số từ hiện tại
+            elements.message.textContent = ''; // Xóa thông báo lỗi
+
+            if (state.currentWordIndex === state.words.length) {
+                // Nếu đã hoàn thành tất cả các từ trong câu
+                state.score += 10; // Tăng điểm
+                state.completedSentences++; // Tăng số câu hoàn thành
+                state.currentSentenceIndex++; // Chuyển sang câu tiếp theo trong danh sách
+                updateScoreDisplay(); // Cập nhật hiển thị điểm
+                speak(state.originalSentence, () => setTimeout(startNewSentence, 1800)); // Phát âm câu hoàn chỉnh và bắt đầu câu mới sau 1.8s
+            } else {
+                // Nếu chưa hoàn thành câu, phát âm từ tiếp theo để gợi ý
+                speak(state.words[state.currentWordIndex]);
+            }
+        } else {
+            // Logic khi người dùng chọn sai từ
+            wordEl.classList.add('incorrect'); // Thêm class 'incorrect'
+            elements.message.textContent = 'Sai rồi! Nghe lại nhé.'; // Hiển thị thông báo lỗi
+            
+            // Tìm từ đúng trong ngân hàng từ và thêm hiệu ứng nhấp nháy
+            const correctWordEl = Array.from(elements.wordBank.children).find(el => 
+                !el.classList.contains('disabled') && el.textContent === correctWord
+            );
+            if(correctWordEl) correctWordEl.classList.add('blink');
+            
+            speak(correctWord); // Phát âm lại từ đúng để người chơi chọn lại
+
+            // Xóa hiệu ứng sau một khoảng thời gian
+            setTimeout(() => {
+                wordEl.classList.remove('incorrect');
+                if(correctWordEl) correctWordEl.classList.remove('blink');
+                elements.message.textContent = '';
+            }, 1500);
+        }
+    }
+
+    /**
+     * Hiển thị màn hình chúc mừng khi hoàn thành tất cả các câu.
+     */
+    function showCongratulations() {
+        elements.gameScreen.style.display = 'none';
+        elements.congratsScreen.style.display = 'flex';
+        startFireworks(); // Bắt đầu hiệu ứng pháo hoa
+    }
+
+    /**
+     * Đặt lại trò chơi về trạng thái ban đầu.
+     */
+    function resetGame() {
+        speechSynthesis.cancel(); // Hủy bỏ giọng nói nếu đang phát
+        initializeState(); // Khởi tạo lại trạng thái
+        updateScoreDisplay(); // Cập nhật hiển thị điểm
+        elements.congratsScreen.style.display = 'none'; // Ẩn màn hình chúc mừng
+        elements.gameScreen.style.display = 'block'; // Hiển thị màn hình game
+        elements.startScreen.style.display = 'none'; // Ẩn màn hình bắt đầu
+        stopFireworks(); // Dừng hiệu ứng pháo hoa
+        startNewSentence(); // Bắt đầu câu mới
+    }
+
+    // --- Logic cho hiệu ứng pháo hoa ---
+    const ctx = elements.canvas.getContext('2d');
+    let particles = [];
+    let isFireworksActive = false;
+
+    /**
+     * Bắt đầu hiệu ứng pháo hoa toàn màn hình (cho màn hình chúc mừng).
+     */
+    function startFireworks() {
+        if (isFireworksActive) return;
+        isFireworksActive = true;
+        particles = [];
+        for (let i = 0; i < 100; i++) particles.push(createParticle(window.innerWidth / 2, window.innerHeight / 2));
+        animateFireworks();
+    }
+
+    /**
+     * Tạo hiệu ứng pháo hoa tại một vị trí cụ thể.
+     * @param {HTMLElement} element - Phần tử HTML làm điểm xuất phát.
+     */
+    function launchEffectFromElement(element) {
+        const rect = element.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        for (let i = 0; i < 20; i++) {
+            particles.push(createParticle(x, y));
+        }
+        if (!state.animationFrameId) {
+            animateFireworks();
+        }
+    }
+
+    /**
+     * Tạo một hạt pháo hoa mới.
+     * @param {number} x - Tọa độ x ban đầu.
+     * @param {number} y - Tọa độ y ban đầu.
+     * @returns {object} Đối tượng hạt pháo hoa.
+     */
+    function createParticle(x, y) {
+        const angle = Math.random() * Math.PI * 2; // Góc ngẫu nhiên
+        const speed = Math.random() * 6 + 2; // Tốc độ ngẫu nhiên
+        return {
+            x, y,
+            vx: Math.cos(angle) * speed, // Vận tốc theo x
+            vy: Math.sin(angle) * speed, // Vận tốc theo y
+            color: `hsl(${Math.random() * 360}, 100%, 70%)`, // Màu sắc ngẫu nhiên
+            size: Math.random() * 4 + 2, // Kích thước ngẫu nhiên
+            life: 1, // Tuổi thọ (1 = sống, 0 = chết)
+            fade: 0.02 // Tốc độ mờ dần
+        };
+    }
+
+    /**
+     * Vòng lặp animation cho hiệu ứng pháo hoa.
+     */
+    function animateFireworks() {
+        ctx.globalCompositeOperation = 'source-over';
+        if (isFireworksActive) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, elements.canvas.width, elements.canvas.height);
+        } else {
+            ctx.clearRect(0, 0, elements.canvas.width, elements.canvas.height);
+        }
+        ctx.globalCompositeOperation = 'lighter';
+
+        particles = particles.filter(p => p.life > 0); // Lọc bỏ các hạt đã hết tuổi thọ
+        if (particles.length === 0 && state.animationFrameId) {
+            stopFireworks();
+            return;
+        }
+
+        particles.forEach(p => {
+            p.x += p.vx; // Cập nhật vị trí x
+            p.y += p.vy; // Cập nhật vị trí y
+            p.vy += 0.05; // Thêm trọng lực
+            p.life -= p.fade; // Giảm tuổi thọ
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); // Vẽ hạt
+            ctx.fillStyle = `hsla(${p.color.match(/\d+/)[0]}, 100%, 70%, ${p.life})`; // Màu sắc với độ trong suốt thay đổi
+            ctx.fill();
+        });
+
+        state.animationFrameId = requestAnimationFrame(animateFireworks); // Yêu cầu frame animation tiếp theo
+    }
+
+    /**
+     * Dừng hiệu ứng pháo hoa.
+     */
+    function stopFireworks() {
+        if (state.animationFrameId) cancelAnimationFrame(state.animationFrameId);
+        state.animationFrameId = null;
+        particles = [];
+        isFireworksActive = false;
+        ctx.clearRect(0, 0, elements.canvas.width, elements.canvas.height);
+    }
+
+    // --- Gán sự kiện cho các nút ---
+    elements.startBtn.addEventListener('click', () => {
+        const playerName = elements.nameInput.value.trim();
+        if (playerName) {
+            elements.startScreen.style.display = 'none'; // Ẩn màn hình bắt đầu
+            elements.gameScreen.style.display = 'block'; // Hiển thị màn hình game
+            resetGame(); // Bắt đầu trò chơi mới
+        } else {
+            alert('Vui lòng nhập tên của bạn để bắt đầu!');
+        }
+    });
+
+    elements.listenAgainBtn.addEventListener('click', () => {
+        // Phát âm lại từ hiện tại nếu có
+        if (state.words.length > 0 && state.currentWordIndex < state.words.length) {
+            speak(state.words[state.currentWordIndex]);
+        }
+    });
+
+    elements.resetBtn.addEventListener('click', resetGame); // Nút chơi lại từ đầu
+    elements.playAgainBtn.addEventListener('click', resetGame); // Nút chơi lại trên màn hình chúc mừng
+
+    // Cập nhật kích thước canvas khi cửa sổ thay đổi kích thước
+    window.addEventListener('resize', () => {
+        elements.canvas.width = window.innerWidth;
+        elements.canvas.height = window.innerHeight;
+    });
+
+    // Khi DOM đã tải hoàn toàn
+    document.addEventListener('DOMContentLoaded', () => {
+        elements.canvas.width = window.innerWidth; // Đặt chiều rộng canvas ban đầu
+        elements.canvas.height = window.innerHeight; // Đặt chiều cao canvas ban đầu
+        initializeState(); // Khởi tạo trạng thái game
+        initializeSpeech(); // Khởi tạo SpeechSynthesis
+        updateScoreDisplay(); // Cập nhật hiển thị điểm ban đầu
+    });
+    </script>
+</body>
+</html>
